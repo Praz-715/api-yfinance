@@ -1,0 +1,1861 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Indonesian Stock Analysis API",
+    "description": "Production-grade realtime and historical analysis API for Indonesian (IDX) equities.\n\nAll `/api/v1` data endpoints require authentication (`X-API-Key` header or `Authorization: Bearer <jwt>`) **and** an allow-listed browser origin. Responses use a uniform `{meta, data}` envelope; errors use a uniform `{error}` envelope.",
+    "contact": {
+      "name": "teguh-prasetyo.com",
+      "url": "https://www.teguh-prasetyo.com/"
+    },
+    "license": {
+      "name": "Proprietary"
+    },
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://api.teguh-prasetyo.com",
+      "description": "Production"
+    },
+    {
+      "url": "http://localhost:8000",
+      "description": "Local development"
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Service health probe",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Health Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/token": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Issue access & refresh tokens",
+        "operationId": "issue_token_api_v1_auth_token_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TokenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ]
+      }
+    },
+    "/api/v1/auth/refresh": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Exchange a refresh token",
+        "operationId": "refresh_token_api_v1_auth_refresh_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stock/{symbol}": {
+      "get": {
+        "tags": [
+          "stock"
+        ],
+        "summary": "Realtime quote for an IDX symbol",
+        "operationId": "get_quote_api_v1_stock__symbol__get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 12,
+              "description": "IDX ticker symbol.",
+              "examples": [
+                "BBCA"
+              ],
+              "title": "Symbol"
+            },
+            "description": "IDX ticker symbol."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_Quote_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/history/{symbol}": {
+      "get": {
+        "tags": [
+          "history"
+        ],
+        "summary": "Historical OHLCV with pagination",
+        "operationId": "get_history_api_v1_history__symbol__get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 12,
+              "description": "IDX ticker symbol.",
+              "examples": [
+                "BBCA"
+              ],
+              "title": "Symbol"
+            },
+            "description": "IDX ticker symbol."
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Start date (inclusive), Jakarta time.",
+              "title": "Start"
+            },
+            "description": "Start date (inclusive), Jakarta time."
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "End date (inclusive), Jakarta time.",
+              "title": "End"
+            },
+            "description": "End date (inclusive), Jakarta time."
+          },
+          {
+            "name": "interval",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Interval",
+              "description": "Sampling interval.",
+              "default": "1d"
+            },
+            "description": "Sampling interval."
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100000,
+              "minimum": 1,
+              "description": "1-based page index.",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "1-based page index."
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000,
+              "minimum": 1,
+              "description": "Rows per page.",
+              "default": 200,
+              "title": "Page Size"
+            },
+            "description": "Rows per page."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_HistoryData_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/technical/{symbol}": {
+      "get": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Full technical-indicator bundle",
+        "operationId": "get_technical_api_v1_technical__symbol__get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 12,
+              "description": "IDX ticker symbol.",
+              "examples": [
+                "BBCA"
+              ],
+              "title": "Symbol"
+            },
+            "description": "IDX ticker symbol."
+          },
+          {
+            "name": "interval",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Interval",
+              "description": "Sampling interval.",
+              "default": "1d"
+            },
+            "description": "Sampling interval."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_TechnicalIndicators_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/signal/{symbol}": {
+      "get": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Composite trading signal with confidence and risk",
+        "operationId": "get_signal_api_v1_signal__symbol__get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 12,
+              "description": "IDX ticker symbol.",
+              "examples": [
+                "BBCA"
+              ],
+              "title": "Symbol"
+            },
+            "description": "IDX ticker symbol."
+          },
+          {
+            "name": "interval",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Interval",
+              "description": "Sampling interval.",
+              "default": "1d"
+            },
+            "description": "Sampling interval."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_TradingSignal_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/market/summary": {
+      "get": {
+        "tags": [
+          "market"
+        ],
+        "summary": "Aggregate snapshot of the tracked IDX universe",
+        "operationId": "market_summary_api_v1_market_summary_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_MarketSummary_"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/top-gainers": {
+      "get": {
+        "tags": [
+          "market"
+        ],
+        "summary": "Top gainers by percentage change",
+        "operationId": "top_gainers_api_v1_top_gainers_get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 45,
+              "minimum": 1,
+              "default": 10,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_MarketMover__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/top-losers": {
+      "get": {
+        "tags": [
+          "market"
+        ],
+        "summary": "Top losers by percentage change",
+        "operationId": "top_losers_api_v1_top_losers_get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 45,
+              "minimum": 1,
+              "default": 10,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_MarketMover__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/unusual-volume": {
+      "get": {
+        "tags": [
+          "market"
+        ],
+        "summary": "Symbols trading on unusually high relative volume",
+        "operationId": "unusual_volume_api_v1_unusual_volume_get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 45,
+              "minimum": 1,
+              "default": 10,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_MarketMover__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "API root",
+        "operationId": "root__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Root  Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "BollingerBands": {
+        "properties": {
+          "upper": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upper"
+          },
+          "middle": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Middle"
+          },
+          "lower": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lower"
+          },
+          "bandwidth": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bandwidth",
+            "description": "(upper-lower)/middle."
+          },
+          "percent_b": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Percent B",
+            "description": "Position of price within the bands [0,1]."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "BollingerBands"
+      },
+      "Envelope_HistoryData_": {
+        "properties": {
+          "meta": {
+            "$ref": "#/components/schemas/ResponseMeta"
+          },
+          "data": {
+            "$ref": "#/components/schemas/HistoryData"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "meta",
+          "data"
+        ],
+        "title": "Envelope[HistoryData]"
+      },
+      "Envelope_MarketSummary_": {
+        "properties": {
+          "meta": {
+            "$ref": "#/components/schemas/ResponseMeta"
+          },
+          "data": {
+            "$ref": "#/components/schemas/MarketSummary"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "meta",
+          "data"
+        ],
+        "title": "Envelope[MarketSummary]"
+      },
+      "Envelope_Quote_": {
+        "properties": {
+          "meta": {
+            "$ref": "#/components/schemas/ResponseMeta"
+          },
+          "data": {
+            "$ref": "#/components/schemas/Quote"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "meta",
+          "data"
+        ],
+        "title": "Envelope[Quote]"
+      },
+      "Envelope_TechnicalIndicators_": {
+        "properties": {
+          "meta": {
+            "$ref": "#/components/schemas/ResponseMeta"
+          },
+          "data": {
+            "$ref": "#/components/schemas/TechnicalIndicators"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "meta",
+          "data"
+        ],
+        "title": "Envelope[TechnicalIndicators]"
+      },
+      "Envelope_TradingSignal_": {
+        "properties": {
+          "meta": {
+            "$ref": "#/components/schemas/ResponseMeta"
+          },
+          "data": {
+            "$ref": "#/components/schemas/TradingSignal"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "meta",
+          "data"
+        ],
+        "title": "Envelope[TradingSignal]"
+      },
+      "Envelope_list_MarketMover__": {
+        "properties": {
+          "meta": {
+            "$ref": "#/components/schemas/ResponseMeta"
+          },
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/MarketMover"
+            },
+            "type": "array",
+            "title": "Data"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "meta",
+          "data"
+        ],
+        "title": "Envelope[list[MarketMover]]"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HistoryData": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "interval": {
+            "$ref": "#/components/schemas/Interval"
+          },
+          "start": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Start"
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time",
+            "title": "End"
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/PaginationMeta"
+          },
+          "bars": {
+            "items": {
+              "$ref": "#/components/schemas/OHLCVBar"
+            },
+            "type": "array",
+            "title": "Bars"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "symbol",
+          "interval",
+          "start",
+          "end",
+          "pagination",
+          "bars"
+        ],
+        "title": "HistoryData",
+        "description": "Paginated historical OHLCV series."
+      },
+      "Interval": {
+        "type": "string",
+        "enum": [
+          "1m",
+          "5m",
+          "15m",
+          "30m",
+          "1h",
+          "1d",
+          "1wk",
+          "1mo"
+        ],
+        "title": "Interval",
+        "description": "Supported sampling intervals (mapped to provider-native values)."
+      },
+      "MACDValue": {
+        "properties": {
+          "macd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Macd"
+          },
+          "signal": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Signal"
+          },
+          "histogram": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Histogram"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "MACDValue"
+      },
+      "MarketMover": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "price": {
+            "type": "number",
+            "title": "Price"
+          },
+          "change": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change"
+          },
+          "change_percent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change Percent"
+          },
+          "volume": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Volume"
+          },
+          "relative_volume": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relative Volume"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "symbol",
+          "price"
+        ],
+        "title": "MarketMover",
+        "description": "A single row in a market screener (gainers/losers/unusual volume)."
+      },
+      "MarketSummary": {
+        "properties": {
+          "universe_size": {
+            "type": "integer",
+            "title": "Universe Size"
+          },
+          "evaluated": {
+            "type": "integer",
+            "title": "Evaluated"
+          },
+          "advancers": {
+            "type": "integer",
+            "title": "Advancers"
+          },
+          "decliners": {
+            "type": "integer",
+            "title": "Decliners"
+          },
+          "unchanged": {
+            "type": "integer",
+            "title": "Unchanged"
+          },
+          "average_change_percent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Average Change Percent"
+          },
+          "is_market_open": {
+            "type": "boolean",
+            "title": "Is Market Open"
+          },
+          "top_gainers": {
+            "items": {
+              "$ref": "#/components/schemas/MarketMover"
+            },
+            "type": "array",
+            "title": "Top Gainers"
+          },
+          "top_losers": {
+            "items": {
+              "$ref": "#/components/schemas/MarketMover"
+            },
+            "type": "array",
+            "title": "Top Losers"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "universe_size",
+          "evaluated",
+          "advancers",
+          "decliners",
+          "unchanged",
+          "is_market_open",
+          "top_gainers",
+          "top_losers"
+        ],
+        "title": "MarketSummary",
+        "description": "Aggregate snapshot of the tracked IDX universe."
+      },
+      "MovingAverages": {
+        "properties": {
+          "sma_20": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sma 20"
+          },
+          "sma_50": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sma 50"
+          },
+          "sma_200": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sma 200"
+          },
+          "ema_12": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ema 12"
+          },
+          "ema_26": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ema 26"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "MovingAverages"
+      },
+      "OHLCVBar": {
+        "properties": {
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Timestamp"
+          },
+          "open": {
+            "type": "number",
+            "title": "Open"
+          },
+          "high": {
+            "type": "number",
+            "title": "High"
+          },
+          "low": {
+            "type": "number",
+            "title": "Low"
+          },
+          "close": {
+            "type": "number",
+            "title": "Close"
+          },
+          "volume": {
+            "type": "integer",
+            "title": "Volume"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "timestamp",
+          "open",
+          "high",
+          "low",
+          "close",
+          "volume"
+        ],
+        "title": "OHLCVBar",
+        "description": "A single open/high/low/close/volume observation."
+      },
+      "PaginationMeta": {
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page Size"
+          },
+          "total_items": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total Items"
+          },
+          "total_pages": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total Pages"
+          },
+          "has_next": {
+            "type": "boolean",
+            "title": "Has Next"
+          },
+          "has_previous": {
+            "type": "boolean",
+            "title": "Has Previous"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "page",
+          "page_size",
+          "total_items",
+          "total_pages",
+          "has_next",
+          "has_previous"
+        ],
+        "title": "PaginationMeta"
+      },
+      "Quote": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "price": {
+            "type": "number",
+            "title": "Price",
+            "description": "Most recent traded/last price."
+          },
+          "previous_close": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Close"
+          },
+          "change": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change",
+            "description": "Absolute change vs previous close."
+          },
+          "change_percent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change Percent",
+            "description": "Percentage change vs previous close."
+          },
+          "day_open": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Day Open"
+          },
+          "day_high": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Day High"
+          },
+          "day_low": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Day Low"
+          },
+          "volume": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Volume"
+          },
+          "market_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Market Time",
+            "description": "Exchange timestamp of the quote."
+          },
+          "is_market_open": {
+            "type": "boolean",
+            "title": "Is Market Open",
+            "description": "Indicative IDX session-open flag."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "symbol",
+          "price",
+          "is_market_open"
+        ],
+        "title": "Quote",
+        "description": "A realtime (or last-known) quote snapshot."
+      },
+      "RefreshRequest": {
+        "properties": {
+          "refresh_token": {
+            "type": "string",
+            "maxLength": 4096,
+            "minLength": 16,
+            "title": "Refresh Token"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "refresh_token"
+        ],
+        "title": "RefreshRequest"
+      },
+      "ResponseMeta": {
+        "properties": {
+          "symbol": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Symbol",
+            "description": "Canonical IDX symbol, e.g. BBCA.JK."
+          },
+          "exchange": {
+            "type": "string",
+            "title": "Exchange",
+            "description": "Source exchange identifier.",
+            "default": "IDX"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency",
+            "description": "Currency of all monetary values.",
+            "default": "IDR"
+          },
+          "timezone": {
+            "type": "string",
+            "title": "Timezone",
+            "description": "Time zone of all timestamps.",
+            "default": "Asia/Jakarta"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source",
+            "description": "Upstream data provider that served the data."
+          },
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At",
+            "description": "UTC instant the response was produced."
+          },
+          "cached": {
+            "type": "boolean",
+            "title": "Cached",
+            "description": "Whether the payload was served from cache.",
+            "default": false
+          },
+          "disclaimer": {
+            "type": "string",
+            "title": "Disclaimer",
+            "default": "Data is provided for informational purposes only and may be delayed. It is not investment advice."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "source",
+          "generated_at"
+        ],
+        "title": "ResponseMeta",
+        "description": "Provenance metadata attached to every successful data response."
+      },
+      "RiskLevel": {
+        "type": "string",
+        "enum": [
+          "low",
+          "medium",
+          "high"
+        ],
+        "title": "RiskLevel"
+      },
+      "SignalComponent": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "signal": {
+            "$ref": "#/components/schemas/SignalType"
+          },
+          "weight": {
+            "type": "number",
+            "title": "Weight"
+          },
+          "rationale": {
+            "type": "string",
+            "title": "Rationale"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "signal",
+          "weight",
+          "rationale"
+        ],
+        "title": "SignalComponent",
+        "description": "One contributing factor in the composite signal."
+      },
+      "SignalType": {
+        "type": "string",
+        "enum": [
+          "strong_buy",
+          "buy",
+          "hold",
+          "sell",
+          "strong_sell"
+        ],
+        "title": "SignalType",
+        "description": "Discrete trading signal classification."
+      },
+      "SupportResistance": {
+        "properties": {
+          "support": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Support"
+          },
+          "resistance": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Resistance"
+          },
+          "pivot": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pivot"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "SupportResistance"
+      },
+      "TechnicalIndicators": {
+        "properties": {
+          "last_price": {
+            "type": "number",
+            "title": "Last Price"
+          },
+          "moving_averages": {
+            "$ref": "#/components/schemas/MovingAverages"
+          },
+          "rsi_14": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rsi 14"
+          },
+          "macd": {
+            "$ref": "#/components/schemas/MACDValue"
+          },
+          "bollinger_bands": {
+            "$ref": "#/components/schemas/BollingerBands"
+          },
+          "atr_14": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Atr 14"
+          },
+          "annualized_volatility": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Annualized Volatility"
+          },
+          "support_resistance": {
+            "$ref": "#/components/schemas/SupportResistance"
+          },
+          "trend": {
+            "$ref": "#/components/schemas/TrendInfo"
+          },
+          "volume": {
+            "$ref": "#/components/schemas/VolumeAnalysis"
+          },
+          "sample_size": {
+            "type": "integer",
+            "title": "Sample Size",
+            "description": "Number of bars used in the computation."
+          },
+          "interval": {
+            "$ref": "#/components/schemas/Interval"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "last_price",
+          "moving_averages",
+          "macd",
+          "bollinger_bands",
+          "support_resistance",
+          "trend",
+          "volume",
+          "sample_size",
+          "interval"
+        ],
+        "title": "TechnicalIndicators",
+        "description": "The full technical-indicator bundle for a symbol."
+      },
+      "TokenRequest": {
+        "properties": {
+          "scopes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 16,
+            "title": "Scopes",
+            "description": "Subset of grantable scopes to embed in the access token."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "TokenRequest",
+        "description": "Request body to mint tokens. Authentication itself is via the API key\nheader; this body only narrows the requested scopes."
+      },
+      "TokenResponse": {
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "title": "Access Token"
+          },
+          "refresh_token": {
+            "type": "string",
+            "title": "Refresh Token"
+          },
+          "token_type": {
+            "type": "string",
+            "title": "Token Type",
+            "default": "bearer"
+          },
+          "expires_in": {
+            "type": "integer",
+            "title": "Expires In",
+            "description": "Access-token lifetime in seconds."
+          },
+          "scopes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Scopes"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "access_token",
+          "refresh_token",
+          "expires_in",
+          "scopes"
+        ],
+        "title": "TokenResponse"
+      },
+      "TradingSignal": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "signal": {
+            "$ref": "#/components/schemas/SignalType"
+          },
+          "confidence": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence"
+          },
+          "risk_level": {
+            "$ref": "#/components/schemas/RiskLevel"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score",
+            "description": "Net weighted score in the range [-1, 1]."
+          },
+          "trend": {
+            "$ref": "#/components/schemas/TrendDirection"
+          },
+          "components": {
+            "items": {
+              "$ref": "#/components/schemas/SignalComponent"
+            },
+            "type": "array",
+            "title": "Components"
+          },
+          "interval": {
+            "$ref": "#/components/schemas/Interval"
+          },
+          "evaluated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Evaluated At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "symbol",
+          "signal",
+          "confidence",
+          "risk_level",
+          "score",
+          "trend",
+          "components",
+          "interval",
+          "evaluated_at"
+        ],
+        "title": "TradingSignal",
+        "description": "Composite trading signal with confidence and risk classification."
+      },
+      "TrendDirection": {
+        "type": "string",
+        "enum": [
+          "bullish",
+          "bearish",
+          "sideways"
+        ],
+        "title": "TrendDirection"
+      },
+      "TrendInfo": {
+        "properties": {
+          "direction": {
+            "$ref": "#/components/schemas/TrendDirection"
+          },
+          "strength": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Strength",
+            "description": "Normalised trend strength [0,1]."
+          },
+          "slope": {
+            "type": "number",
+            "title": "Slope",
+            "description": "Slope of the linear regression of close prices."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "direction",
+          "strength",
+          "slope"
+        ],
+        "title": "TrendInfo"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "VolumeAnalysis": {
+        "properties": {
+          "latest_volume": {
+            "type": "integer",
+            "title": "Latest Volume"
+          },
+          "average_volume": {
+            "type": "number",
+            "title": "Average Volume"
+          },
+          "relative_volume": {
+            "type": "number",
+            "title": "Relative Volume",
+            "description": "latest / average volume."
+          },
+          "spike_detected": {
+            "type": "boolean",
+            "title": "Spike Detected"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "latest_volume",
+          "average_volume",
+          "relative_volume",
+          "spike_detected"
+        ],
+        "title": "VolumeAnalysis"
+      }
+    },
+    "securitySchemes": {
+      "APIKeyHeader": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key"
+      },
+      "HTTPBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "system",
+      "description": "Health and service metadata."
+    },
+    {
+      "name": "auth",
+      "description": "JWT token issuance and refresh."
+    },
+    {
+      "name": "stock",
+      "description": "Realtime quotes for IDX symbols."
+    },
+    {
+      "name": "history",
+      "description": "Paginated historical OHLCV."
+    },
+    {
+      "name": "analysis",
+      "description": "Technical indicators and composite signals."
+    },
+    {
+      "name": "market",
+      "description": "Market-wide screeners over the IDX universe."
+    }
+  ]
+}
