@@ -76,6 +76,7 @@ class Settings(BaseSettings):
     quote_cache_ttl_seconds: int = Field(default=15, alias="QUOTE_CACHE_TTL_SECONDS")
     history_cache_ttl_seconds: int = Field(default=300, alias="HISTORY_CACHE_TTL_SECONDS")
     market_cache_ttl_seconds: int = Field(default=60, alias="MARKET_CACHE_TTL_SECONDS")
+    fundamentals_cache_ttl_seconds: int = Field(default=3600, alias="FUNDAMENTALS_CACHE_TTL_SECONDS")
 
     # ----------------------------------------------------------------- providers
     provider_timeout_seconds: float = Field(default=8.0, alias="PROVIDER_TIMEOUT_SECONDS")

@@ -96,3 +96,27 @@ class ProviderManager:
         if isinstance(last_error, UpstreamTimeoutError):
             raise last_error
         raise UpstreamError("All market-data providers are unavailable.") from last_error
+
+    async def get_quote_summary(self, symbol: str, modules: tuple[str, ...] | None = None) -> dict:
+        """Return raw fundamental ``quoteSummary`` modules from the first capable provider."""
+        client = self._ensure_client()
+        last_error: Exception | None = None
+
+        for provider in self._providers:
+            fetch = getattr(provider, "fetch_quote_summary", None)
+            if fetch is None:
+                continue
+            try:
+                if modules is None:
+                    return await fetch(client, symbol)
+                return await fetch(client, symbol, modules)
+            except (UpstreamError, UpstreamTimeoutError) as exc:
+                last_error = exc
+                logger.warning(
+                    "fundamentals_failover",
+                    extra={"provider": provider.name, "symbol": symbol, "error": str(exc)},
+                )
+
+        if isinstance(last_error, UpstreamTimeoutError):
+            raise last_error
+        raise UpstreamError("No provider can supply fundamentals.") from last_error

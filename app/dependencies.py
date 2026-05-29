@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from fastapi import Request
 
+from app.services.fundamentals import FundamentalsService
 from app.services.market_data import MarketDataService
 from app.services.universe import MarketScreener
 
@@ -19,3 +20,7 @@ def get_market_data(request: Request) -> MarketDataService:
 
 def get_screener(request: Request) -> MarketScreener:
     return request.app.state.screener
+
+
+def get_fundamentals(request: Request) -> FundamentalsService:
+    return request.app.state.fundamentals

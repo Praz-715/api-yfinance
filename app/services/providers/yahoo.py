@@ -27,6 +27,23 @@ logger = get_logger("provider.yahoo")
 
 _HOSTS: tuple[str, ...] = ("query1.finance.yahoo.com", "query2.finance.yahoo.com")
 
+# quoteSummary modules pulled for fundamental analysis.
+QUOTE_SUMMARY_MODULES: tuple[str, ...] = (
+    "assetProfile",
+    "summaryDetail",
+    "financialData",
+    "defaultKeyStatistics",
+    "incomeStatementHistory",
+    "balanceSheetHistory",
+    "cashflowStatementHistory",
+    "calendarEvents",
+    "price",
+)
+
+
+class _CrumbExpired(Exception):
+    """Internal signal that the cached Yahoo crumb was rejected and must refresh."""
+
 # A realistic browser User-Agent; Yahoo rejects empty/无 UAs.
 _UA = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -50,6 +67,11 @@ class YahooFinanceProvider(MarketDataProvider):
             )
             for host in _HOSTS
         }
+        # Yahoo's quoteSummary endpoint requires a per-session crumb (paired with
+        # a consent cookie carried by the shared client). Cached and refreshed
+        # on demand when rejected.
+        self._crumb: str | None = None
+        self._crumb_lock = asyncio.Lock()
 
     async def fetch_chart(
         self,
@@ -188,6 +210,127 @@ class YahooFinanceProvider(MarketDataProvider):
         frame = frame.dropna(subset=["close"])
         frame["volume"] = frame["volume"].fillna(0.0)
         return frame
+
+    # -------------------------------------------------------- fundamentals (QS)
+    async def _ensure_crumb(self, client: httpx.AsyncClient, *, force: bool = False) -> str:
+        """Return a valid Yahoo crumb, fetching/refreshing it (and the cookie) as needed."""
+        if self._crumb and not force:
+            return self._crumb
+        async with self._crumb_lock:
+            if self._crumb and not force:
+                return self._crumb
+            # Seed the consent cookie on the shared client's jar (404 is expected
+            # and harmless — the Set-Cookie header is what we need).
+            try:
+                await client.get(
+                    "https://fc.yahoo.com",
+                    headers={"User-Agent": _UA},
+                    timeout=self._timeout,
+                )
+            except httpx.HTTPError:
+                pass
+            try:
+                response = await client.get(
+                    "https://query2.finance.yahoo.com/v1/test/getcrumb",
+                    headers={"User-Agent": _UA, "Accept": "text/plain"},
+                    timeout=self._timeout,
+                )
+            except httpx.TimeoutException as exc:
+                raise UpstreamTimeoutError() from exc
+            except httpx.HTTPError as exc:
+                raise UpstreamError("Failed to negotiate a Yahoo Finance session.") from exc
+
+            crumb = (response.text or "").strip()
+            if response.status_code != 200 or not crumb or "<" in crumb:
+                raise UpstreamError("Failed to obtain a Yahoo Finance crumb.")
+            self._crumb = crumb
+            return crumb
+
+    async def fetch_quote_summary(
+        self,
+        client: httpx.AsyncClient,
+        symbol: str,
+        modules: tuple[str, ...] = QUOTE_SUMMARY_MODULES,
+    ) -> dict:
+        """Fetch raw quoteSummary modules for ``symbol`` (fundamentals).
+
+        Handles crumb negotiation, one transparent crumb refresh on rejection,
+        host failover, and circuit breaking — mirroring ``fetch_chart``.
+        """
+        module_param = ",".join(modules)
+        crumb = await self._ensure_crumb(client)
+        last_error: Exception | None = None
+
+        for host in _HOSTS:
+            breaker = self._breakers[host]
+            if not await breaker.allow():
+                last_error = CircuitOpenError(host)
+                continue
+            try:
+                result = await self._request_quote_summary(client, host, symbol, module_param, crumb)
+                await breaker.record_success()
+                return result
+            except _CrumbExpired:
+                # Crumb/cookie rejected: refresh once and retry this host.
+                try:
+                    crumb = await self._ensure_crumb(client, force=True)
+                    result = await self._request_quote_summary(client, host, symbol, module_param, crumb)
+                    await breaker.record_success()
+                    return result
+                except (UpstreamError, UpstreamTimeoutError) as exc:
+                    await breaker.record_failure()
+                    last_error = exc
+            except UpstreamTimeoutError as exc:
+                await breaker.record_failure()
+                last_error = exc
+            except UpstreamError as exc:
+                await breaker.record_failure()
+                last_error = exc
+
+        if isinstance(last_error, UpstreamTimeoutError):
+            raise last_error
+        raise UpstreamError("Yahoo Finance fundamentals are unavailable.") from last_error
+
+    async def _request_quote_summary(
+        self,
+        client: httpx.AsyncClient,
+        host: str,
+        symbol: str,
+        module_param: str,
+        crumb: str,
+    ) -> dict:
+        url = f"https://{host}/v10/finance/quoteSummary/{symbol}"
+        try:
+            response = await client.get(
+                url,
+                params={"modules": module_param, "crumb": crumb, "formatted": "true"},
+                headers={"User-Agent": _UA, "Accept": "application/json"},
+                timeout=self._timeout,
+            )
+        except httpx.TimeoutException as exc:
+            raise UpstreamTimeoutError() from exc
+        except httpx.HTTPError as exc:
+            raise UpstreamError("Network error contacting Yahoo Finance.") from exc
+
+        if response.status_code in (401, 403):
+            raise _CrumbExpired()
+        if response.status_code in (400, 404):
+            raise UpstreamError("The requested symbol was not found upstream.")
+        if response.status_code != 200:
+            raise UpstreamError(f"Yahoo Finance responded with status {response.status_code}.")
+
+        try:
+            payload = response.json()
+        except ValueError as exc:
+            raise UpstreamError("Yahoo Finance returned a malformed response.") from exc
+
+        summary = (payload or {}).get("quoteSummary") or {}
+        if summary.get("error"):
+            raise UpstreamError("Yahoo Finance reported an error for this symbol.")
+        results = summary.get("result") or []
+        if not results:
+            raise UpstreamError("Yahoo Finance returned no fundamentals for this symbol.")
+        return results[0]
 
 
 def _as_float(value: object) -> float | None:

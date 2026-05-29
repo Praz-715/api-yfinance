@@ -23,8 +23,9 @@ from app.middleware.bot_protection import BotProtectionMiddleware
 from app.middleware.origin_validation import OriginValidationMiddleware
 from app.middleware.request_context import RequestContextMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
-from app.routers import analysis, auth, health, market, stock
+from app.routers import analysis, auth, fundamentals, health, market, stock
 from app.security.rate_limit import limiter
+from app.services.fundamentals import FundamentalsService
 from app.services.market_data import MarketDataService
 from app.services.providers.manager import ProviderManager
 from app.services.universe import MarketScreener
@@ -43,11 +44,13 @@ def _init_singletons(app: FastAPI, settings: Settings) -> None:
     providers = ProviderManager(settings)
     market_data = MarketDataService(providers, cache, settings)
     screener = MarketScreener(market_data, cache, settings)
+    fundamentals_service = FundamentalsService(providers, cache, settings)
 
     app.state.cache = cache
     app.state.providers = providers
     app.state.market_data = market_data
     app.state.screener = screener
+    app.state.fundamentals = fundamentals_service
 
 
 @asynccontextmanager
@@ -101,6 +104,7 @@ def create_app() -> FastAPI:
             {"name": "history", "description": "Paginated historical OHLCV."},
             {"name": "analysis", "description": "Technical indicators and composite signals."},
             {"name": "market", "description": "Market-wide screeners over the IDX universe."},
+            {"name": "fundamentals", "description": "Valuation, profitability, financial health, growth, dividends."},
         ],
     )
 
@@ -138,6 +142,7 @@ def create_app() -> FastAPI:
     app.include_router(analysis.router, prefix=prefix)
     app.include_router(market.router, prefix=prefix)
     app.include_router(market.movers_router, prefix=prefix)
+    app.include_router(fundamentals.router, prefix=prefix)
 
     @app.get("/", tags=["system"], summary="API root")
     async def root() -> dict[str, str]:

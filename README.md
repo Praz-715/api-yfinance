@@ -171,6 +171,8 @@ allow-listed origin.
 | `GET` | `/history/{symbol}` | `read` | public | Historical OHLCV (paginated). |
 | `GET` | `/technical/{symbol}` | `analysis` | heavy | Full indicator bundle. |
 | `GET` | `/signal/{symbol}` | `analysis` | heavy | Composite trading signal. |
+| `GET` | `/fundamentals/{symbol}` | `analysis` | heavy | Full fundamentals: valuation (PE, PEG, P/B…), profitability (ROE/ROA/margins), financial health (cash, debt, ratios), growth (CAGR 3y/5y), dividends. |
+| `GET` | `/compare?symbols=BBCA,BBRI` | `analysis` | heavy | Side-by-side headline fundamentals (≤10 symbols). |
 | `GET` | `/market/summary` | `analysis` | heavy | Universe-wide snapshot. |
 | `GET` | `/top-gainers` | `analysis` | heavy | Top gainers by % change. |
 | `GET` | `/top-losers` | `analysis` | heavy | Top losers by % change. |
