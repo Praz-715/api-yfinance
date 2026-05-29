@@ -297,11 +297,13 @@ changes to callers are required.
    `ENVIRONMENT=production`, `API_KEYS`, `JWT_SECRET`, and `ALLOWED_ORIGINS`.
    Optionally set `REDIS_URL` (e.g. Vercel KV / Upstash) for cross-instance
    caching and shared rate-limit state.
-4. **Deploy**. [`vercel.json`](vercel.json) routes all traffic to
-   `api/index.py`, which exposes the ASGI `app` from `app.main`. The function is
-   configured with 1 GB memory and a 60 s max duration.
+4. **Deploy**. [`vercel.json`](vercel.json) builds `api/index.py` with
+   `@vercel/python` and routes all traffic (`/(.*)`) to it; the module exposes
+   the ASGI `app` from `app.main`. Security headers are applied by the app
+   itself (the middleware stack), not by Vercel config.
 
-No build step is required — Vercel installs `requirements.txt` automatically.
+No separate build step is required — `@vercel/python` installs `requirements.txt`
+automatically.
 
 ```bash
 # Optional: deploy from the CLI
